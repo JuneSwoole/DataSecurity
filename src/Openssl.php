@@ -3,7 +3,7 @@
  * @Author: juneChen && juneswoole@163.com
  * @Date: 2023-07-21 10:13:16
  * @LastEditors: juneChen && juneswoole@163.com
- * @LastEditTime: 2023-07-24 10:13:36
+ * @LastEditTime: 2023-07-24 14:44:09
  * 
  */
 
@@ -39,9 +39,6 @@ class Openssl
         if (is_array($plaintext)) {
             $plaintext = json_encode($plaintext);
         }
-        if (empty($plaintext)) {
-            return "";
-        }
         $key = base64_decode($this->config->getKey());
         $ivlen = openssl_cipher_iv_length($cipher = $this->config->getCipher());
         $iv = openssl_random_pseudo_bytes($ivlen);
@@ -55,13 +52,13 @@ class Openssl
      * 解密数据
      *
      * @param string $ciphertext 密文
-     * @return string|boolean|null
+     * @return string|false
      * @author juneChen <juneswoole@163.com>
      */
     public function decryption(string $ciphertext)
     {
         if (empty($ciphertext)) {
-            return null;
+            return false;
         }
         $ciphertext = base64_decode($ciphertext);
         $key = base64_decode($this->config->getKey());
@@ -77,6 +74,6 @@ class Openssl
         {
             return  $original_plaintext;
         }
-        return null;
+        return false;
     }
 }
