@@ -1,0 +1,20 @@
+{
+    "name": "june/data_security",
+    "description": "Encrypt and decrypt data and verify signatures",
+    "authors": [
+        {
+            "name": "JuneChen",
+            "email": "juneswoole@163.com"
+        }
+    ],
+    "license": "MIT",
+    "require": {
+        "php": ">=7.1",
+        "ext-openssl": "*"
+    },
+    "autoload": {
+        "psr-4": {
+            "June\\DataSecurity\\": "src/"
+        }
+    }
+}
