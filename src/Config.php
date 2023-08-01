@@ -22,7 +22,7 @@ class Config
         "options"    => OPENSSL_RAW_DATA,
         "tag"        => "",
         "aad"        => "",
-        "tag_length" => "16"
+        "tag_length" => 16
     ];
 
     public function __construct(array $config)
@@ -65,7 +65,7 @@ class Config
         return $this->config['aad'];
     }
 
-    public function getTagLength(): string
+    public function getTagLength(): int
     {
         return $this->config['tag_length'];
     }

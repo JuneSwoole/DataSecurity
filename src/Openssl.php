@@ -43,7 +43,7 @@ class Openssl
         $ivlen = openssl_cipher_iv_length($cipher = $this->config->getCipher());
         $iv = openssl_random_pseudo_bytes($ivlen);
         $Tag = $this->config->getTag();
-        $ciphertext_raw = openssl_encrypt((string) $plaintext, $cipher, $key, $this->config->getOptions(), $iv, $Tag, $this->config->getTagLength());
+        $ciphertext_raw = openssl_encrypt((string) $plaintext, $cipher, $key, $this->config->getOptions(), $iv, $Tag, $this->config->getAad(), $this->config->getTagLength());
         $hmac = hash_hmac($this->config->getHmac(), $ciphertext_raw, $key, true);
         return  base64_encode($iv . $hmac . $ciphertext_raw . $Tag);
     }
@@ -68,7 +68,7 @@ class Openssl
         $hmac = substr($ciphertext, $ivlen, $sha2len = 32);
         $ciphertext_raw = substr($ciphertext, $ivlen + $sha2len, -$tag_length);
         $tag = substr($ciphertext, -$tag_length);
-        $original_plaintext = openssl_decrypt($ciphertext_raw, $cipher, $key, $this->config->getOptions(), $iv, $tag, $tag_length);
+        $original_plaintext = openssl_decrypt($ciphertext_raw, $cipher, $key, $this->config->getOptions(), $iv, $tag, $this->config->getAad());
         $calcmac = hash_hmac($this->config->getHmac(), $ciphertext_raw, $key, true);
         if (hash_equals($hmac, $calcmac)) // timing attack safe comparison
         {
