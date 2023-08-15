@@ -8,7 +8,7 @@ Encrypt and decrypt data using openssl
 composer require june/data_security
 ```
 #### Example
-1. Encryption
+1. symmetry encryption and decryption
 ```
 use june\DataSecurity\Config;
 use june\DataSecurity\Openssl;
@@ -21,22 +21,38 @@ $config = new Config($config);
 $openssl = new Openssl($config);
 $ciphertext = $openssl->encrypted($data);
 echo $ciphertext;
+
+$data = $openssl->decryption($ciphertext);
+echo $data;
 ```
-2. Decryption
+2. asymmetry encryption and decryption
 ```
 use june\DataSecurity\Config;
 use june\DataSecurity\Openssl;
 
-$ciphertext = "aveG3WlSQ1MTFV3GGyJfOjr4gPY+SopPoZVOB1qjivRvvnAdTo7qCPRb+D5EwhQtftWENPNquxOENRPdiXdwRmNu2w9cvTLzdMMsIIprwu12IQA8Ao+2nlYCtg==";
+$data = "Data that needs to be encrypted";
 $config = [
-    "key"        => "your key"
+    "privateKey" => "",
+    "privateKeyFilePath" => "",
+    "publicKey" => "",
+    "publicKeyFilePath" => "",
 ];
 $config = new Config($config);
 $openssl = new Openssl($config);
-$data = $openssl->decryption($ciphertext);
+
+// Public key encryption
+$ciphertext = $openssl->publicEncrypt($data);
+echo $ciphertext;
+$data = $openssl->privateDecrypt($ciphertext);
+echo $data;
+
+// Private key encryption
+$ciphertext = $openssl->privateEncrypt($data);
+echo $ciphertext;
+$data = $openssl->publicDecrypt($ciphertext);
 echo $data;
 ```
-3. Get signature
+3. get signature and verification signature
 ```
 use june\DataSecurity\Config;
 use june\DataSecurity\Signature;
@@ -52,32 +68,26 @@ $config = new Config($config);
 $signature = new Signature($config);
 $sign = $signature->sign($data);
 echo $sign;
-```
-4. Verification signature
-```
-use june\DataSecurity\Config;
-use june\DataSecurity\Signature;
 
-$data = [
-    "name" => 'june'
-];
-$sign = 'ul3BFmxyaGMEWMLqWvwQCJJbtQAz/c8JScMS7iyikAo=';
-$config = [
-    "appId"      => "your appId",
-    "key"        => "your key"
-];
-$config = new Config($config);
-$signature = new Signature($config);
 $result = $signature->validate($sign, $data);
 echo $result;
 ```
+
 #### Singleton pattern
 ```
-$ciphertext = \june\DataSecurity\Openssl::getInstance($config)->encrypted($data);
+use june\DataSecurity\Config;
+use june\DataSecurity\Signature;
+use june\DataSecurity\Openssl;
 
-\june\DataSecurity\Openssl::getInstance($config)->decryption($ciphertext);
+$ciphertext = Openssl::getInstance($config)->encrypted($data);
+Openssl::getInstance($config)->decryption($ciphertext);
 
-$sign = \june\DataSecurity\Signature::getInstance($config)->sign($data);
+$ciphertext = Openssl::getInstance($cofig)->publicEncrypt($data);
+Openssl::getInstance($config)->privateDecrypt($ciphertext);
 
-\june\DataSecurity\Signature::getInstance($config)->validate($sign, $data)
+$ciphertext = Openssl::getInstance($cofig)->privateEncrypt($data);
+Openssl::getInstance($config)->publicDecrypt($ciphertext);
+
+$sign = Signature::getInstance($config)->sign($data);
+Signature::getInstance($config)->validate($sign, $data)
 ```

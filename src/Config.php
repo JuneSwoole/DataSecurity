@@ -3,36 +3,34 @@
  * @Author: juneChen && juneswoole@163.com
  * @Date: 2023-07-21 10:13:16
  * @LastEditors: juneChen && juneswoole@163.com
- * @LastEditTime: 2023-07-24 10:41:00
+ * @LastEditTime: 2023-08-14 17:49:53
  * 
  */
 
 declare(strict_types=1);
 
-namespace June\DataSecurity;
+namespace june\DataSecurity;
 
 class Config
 {
 
     private $config = [
-        "appId"      => "",
         "key"        => "",
         "cipher"     => "aes-128-gcm",
         "hmac"       => "sha256",
         "options"    => OPENSSL_RAW_DATA,
         "tag"        => "",
         "aad"        => "",
-        "tag_length" => 16
+        "tag_length" => 16,
+        "privateKey" => "",
+        "privateKeyFilePath" => "",
+        "publicKey" => "",
+        "publicKeyFilePath" => "",
     ];
 
     public function __construct(array $config)
     {
         $this->config  = array_merge($this->config, $config);
-    }
-
-    public function getAppId(): string
-    {
-        return $this->config['appId'];
     }
 
     public function getKey(): string
@@ -68,5 +66,25 @@ class Config
     public function getTagLength(): int
     {
         return $this->config['tag_length'];
+    }
+
+    public function getPrivateKey(): string
+    {
+        return $this->config['privateKey'];
+    }
+
+    public function getPrivateKeyFilePath(): string
+    {
+        return $this->config['privateKeyFilePath'];
+    }
+
+    public function getPublicKey(): string
+    {
+        return $this->config['publicKey'];
+    }
+
+    public function getPublicKeyFilePath(): string
+    {
+        return $this->config['publicKeyFilePath'];
     }
 }
