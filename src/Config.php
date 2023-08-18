@@ -3,7 +3,7 @@
  * @Author: juneChen && juneswoole@163.com
  * @Date: 2023-07-21 10:13:16
  * @LastEditors: juneChen && juneswoole@163.com
- * @LastEditTime: 2023-08-14 17:49:53
+ * @LastEditTime: 2023-08-15 11:47:59
  * 
  */
 
@@ -15,10 +15,12 @@ class Config
 {
 
     private $config = [
+        "appId"      => "",
         "key"        => "",
         "cipher"     => "aes-128-gcm",
         "hmac"       => "sha256",
         "options"    => OPENSSL_RAW_DATA,
+        "iv"         => "",
         "tag"        => "",
         "aad"        => "",
         "tag_length" => 16,
@@ -31,6 +33,11 @@ class Config
     public function __construct(array $config)
     {
         $this->config  = array_merge($this->config, $config);
+    }
+
+    public function getAppId(): string
+    {
+        return $this->config['appId'];
     }
 
     public function getKey(): string
@@ -51,6 +58,11 @@ class Config
     public function getOptions(): int
     {
         return $this->config['options'];
+    }
+
+    public function getIv(): ?string
+    {
+        return $this->config['iv'];
     }
 
     public function getTag(): ?string

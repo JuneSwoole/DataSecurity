@@ -3,7 +3,7 @@
  * @Author: juneChen && juneswoole@163.com
  * @Date: 2023-07-21 10:13:16
  * @LastEditors: juneChen && juneswoole@163.com
- * @LastEditTime: 2023-08-15 11:37:56
+ * @LastEditTime: 2023-08-18 15:43:41
  * 
  */
 
@@ -30,22 +30,23 @@ class Openssl
     /**
      * 对称加密数据
      *
-     * @param array|string $plaintext
+     * @param string $plaintext
      * @return string
      * @author juneChen <juneswoole@163.com>
      */
-    public function encrypted($plaintext): string
+    public function encrypted(string $plaintext): string
     {
-        if (is_array($plaintext)) {
-            $plaintext = json_encode($plaintext);
-        }
         $key = base64_decode($this->config->getKey());
-        $ivlen = openssl_cipher_iv_length($cipher = $this->config->getCipher());
-        $iv = openssl_random_pseudo_bytes($ivlen);
+        $cipher = $this->config->getCipher();
+        $iv = $this->config->getIv();
+        if (empty($iv)) {
+            $ivlen = openssl_cipher_iv_length($cipher);
+            $iv = openssl_random_pseudo_bytes($ivlen);
+        }
         $Tag = $this->config->getTag();
-        $ciphertext_raw = openssl_encrypt((string) $plaintext, $cipher, $key, $this->config->getOptions(), $iv, $Tag, $this->config->getAad(), $this->config->getTagLength());
+        $ciphertext_raw = openssl_encrypt($plaintext, $cipher, $key, $this->config->getOptions(), $iv, $Tag, $this->config->getAad(), $this->config->getTagLength());
         $hmac = hash_hmac($this->config->getHmac(), $ciphertext_raw, $key, true);
-        return  base64_encode($iv . $hmac . $ciphertext_raw . $Tag);
+        return  base64_encode($hmac . $ciphertext_raw . $Tag);
     }
 
     /**
@@ -62,11 +63,15 @@ class Openssl
         }
         $ciphertext = base64_decode($ciphertext);
         $key = base64_decode($this->config->getKey());
-        $ivlen = openssl_cipher_iv_length($cipher = $this->config->getCipher());
+        $cipher = $this->config->getCipher();
+        $iv = $this->config->getIv();
+        if (empty($iv)) {
+            $ivlen = openssl_cipher_iv_length($cipher);
+            $iv = openssl_random_pseudo_bytes($ivlen);
+        }
         $tag_length = $this->config->getTagLength();
-        $iv = substr($ciphertext, 0, $ivlen);
-        $hmac = substr($ciphertext, $ivlen, $sha2len = 32);
-        $ciphertext_raw = substr($ciphertext, $ivlen + $sha2len, -$tag_length);
+        $hmac = substr($ciphertext, 0, $sha2len = 32);
+        $ciphertext_raw = substr($ciphertext, $sha2len, -$tag_length);
         $tag = substr($ciphertext, -$tag_length);
         $original_plaintext = openssl_decrypt($ciphertext_raw, $cipher, $key, $this->config->getOptions(), $iv, $tag, $this->config->getAad());
         $calcmac = hash_hmac($this->config->getHmac(), $ciphertext_raw, $key, true);

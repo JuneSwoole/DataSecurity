@@ -14,10 +14,12 @@ use june\DataSecurity\Config;
 use june\DataSecurity\Openssl;
 
 $data = "Data that needs to be encrypted";
-$config = [
-    "key"        => "your key"
-];
-$config = new Config($config);
+
+$config = new Config([
+    "key"   => "your key",
+    "iv"    => 'iv',
+    "aad"   => 'aad'
+]);
 $openssl = new Openssl($config);
 $ciphertext = $openssl->encrypted($data);
 echo $ciphertext;
@@ -31,13 +33,13 @@ use june\DataSecurity\Config;
 use june\DataSecurity\Openssl;
 
 $data = "Data that needs to be encrypted";
-$config = [
+
+$config = new Config([
     "privateKey" => "",
     "privateKeyFilePath" => "",
     "publicKey" => "",
     "publicKeyFilePath" => "",
-];
-$config = new Config($config);
+]);
 $openssl = new Openssl($config);
 
 // Public key encryption
@@ -60,11 +62,10 @@ use june\DataSecurity\Signature;
 $data = [
     "name" => 'june'
 ];
-$config = [
+$config = new Config([
     "appId"      => "your appId",
     "key"        => "your key"
-];
-$config = new Config($config);
+]);
 $signature = new Signature($config);
 $sign = $signature->sign($data);
 echo $sign;
