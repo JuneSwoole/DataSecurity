@@ -3,7 +3,7 @@
  * @Author: juneChen && juneswoole@163.com
  * @Date: 2023-07-21 10:13:16
  * @LastEditors: juneChen && juneswoole@163.com
- * @LastEditTime: 2023-08-15 11:47:59
+ * @LastEditTime: 2023-08-24 17:16:39
  * 
  */
 
@@ -28,6 +28,7 @@ class Config
         "privateKeyFilePath" => "",
         "publicKey" => "",
         "publicKeyFilePath" => "",
+        "padding" => OPENSSL_ALGO_SHA256,
     ];
 
     public function __construct(array $config)
@@ -98,5 +99,10 @@ class Config
     public function getPublicKeyFilePath(): string
     {
         return $this->config['publicKeyFilePath'];
+    }
+
+    public function getPadding(): int
+    {
+        return $this->config['padding'];
     }
 }

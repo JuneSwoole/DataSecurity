@@ -3,7 +3,7 @@
  * @Author: juneChen && juneswoole@163.com
  * @Date: 2023-07-21 10:13:16
  * @LastEditors: juneChen && juneswoole@163.com
- * @LastEditTime: 2023-08-18 15:43:41
+ * @LastEditTime: 2023-08-24 18:42:22
  * 
  */
 
@@ -208,9 +208,9 @@ class Openssl
             $input = substr($text, 0, $maxLength);
             $text = substr($text, $maxLength);
             if ($type == 'public') {
-                openssl_public_encrypt($input, $crypttext, $key);
+                openssl_public_encrypt($input, $crypttext, $key, $this->config->getPadding());
             } else {
-                openssl_private_encrypt($input, $crypttext, $key);
+                openssl_private_encrypt($input, $crypttext, $key, $this->config->getPadding());
             }
             $output .= $crypttext;
         }
@@ -235,9 +235,9 @@ class Openssl
             $input = substr($text, 0, $maxLength);
             $text = substr($text, $maxLength);
             if ($type == 'public') {
-                openssl_public_decrypt($input, $crypttext, $key);
+                openssl_public_decrypt($input, $crypttext, $key, $this->config->getPadding());
             } else {
-                openssl_private_decrypt($input, $crypttext, $key);
+                openssl_private_decrypt($input, $crypttext, $key, $this->config->getPadding());
             }
             $output .= $crypttext;
         }
