@@ -72,6 +72,19 @@ echo $sign;
 
 $result = $signature->validate($sign, $data);
 echo $result;
+
+$config = new Config([
+    "privateKey" => "",
+    "privateKeyFilePath" => "",
+    "publicKey" => "",
+    "publicKeyFilePath" => "",
+]);
+$signature = new Signature($config);
+$sign = $signature->opensslSign($data);
+echo $sign;
+
+$result = $signature->opensslVerify($sign, $data);
+echo $result;
 ```
 
 #### Singleton pattern
@@ -91,4 +104,7 @@ Openssl::getInstance($config)->publicDecrypt($ciphertext);
 
 $sign = Signature::getInstance($config)->sign($data);
 Signature::getInstance($config)->validate($sign, $data)
+
+$sign = Signature::getInstance($config)->opensslSign($data);
+Signature::getInstance($config)->opensslVerify($sign, $data)
 ```
