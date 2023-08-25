@@ -208,9 +208,9 @@ class Openssl
             $input = substr($text, 0, $maxLength);
             $text = substr($text, $maxLength);
             if ($type == 'public') {
-                openssl_public_encrypt($input, $crypttext, $key, $this->config->getPadding());
+                openssl_public_encrypt($input, $crypttext, $key);
             } else {
-                openssl_private_encrypt($input, $crypttext, $key, $this->config->getPadding());
+                openssl_private_encrypt($input, $crypttext, $key);
             }
             $output .= $crypttext;
         }
@@ -235,9 +235,9 @@ class Openssl
             $input = substr($text, 0, $maxLength);
             $text = substr($text, $maxLength);
             if ($type == 'public') {
-                openssl_public_decrypt($input, $crypttext, $key, $this->config->getPadding());
+                openssl_public_decrypt($input, $crypttext, $key);
             } else {
-                openssl_private_decrypt($input, $crypttext, $key, $this->config->getPadding());
+                openssl_private_decrypt($input, $crypttext, $key);
             }
             $output .= $crypttext;
         }
