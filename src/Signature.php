@@ -9,7 +9,7 @@
 
 declare(strict_types=1);
 
-namespace june\DataSecurity;
+namespace June\DataSecurity;
 
 class Signature
 {
