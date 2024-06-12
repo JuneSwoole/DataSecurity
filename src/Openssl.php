@@ -3,7 +3,7 @@
  * @Author: juneChen && juneswoole@163.com
  * @Date: 2023-07-21 10:13:16
  * @LastEditors: juneChen && juneswoole@163.com
- * @LastEditTime: 2023-08-24 18:42:22
+ * @LastEditTime: 2024-06-12 16:57:29
  * 
  */
 
@@ -45,8 +45,7 @@ class Openssl
         }
         $Tag = $this->config->getTag();
         $ciphertext_raw = openssl_encrypt($plaintext, $cipher, $key, $this->config->getOptions(), $iv, $Tag, $this->config->getAad(), $this->config->getTagLength());
-        $hmac = hash_hmac($this->config->getHmac(), $ciphertext_raw, $key, true);
-        return  base64_encode($hmac . $ciphertext_raw . $Tag);
+        return  base64_encode($ciphertext_raw . $Tag);
     }
 
     /**
@@ -70,16 +69,10 @@ class Openssl
             $iv = openssl_random_pseudo_bytes($ivlen);
         }
         $tag_length = $this->config->getTagLength();
-        $hmac = substr($ciphertext, 0, $sha2len = 32);
-        $ciphertext_raw = substr($ciphertext, $sha2len, -$tag_length);
+        $ciphertext_raw = substr($ciphertext, 0, -$tag_length);
         $tag = substr($ciphertext, -$tag_length);
         $original_plaintext = openssl_decrypt($ciphertext_raw, $cipher, $key, $this->config->getOptions(), $iv, $tag, $this->config->getAad());
-        $calcmac = hash_hmac($this->config->getHmac(), $ciphertext_raw, $key, true);
-        if (hash_equals($hmac, $calcmac)) // timing attack safe comparison
-        {
-            return  $original_plaintext;
-        }
-        return false;
+        return  $original_plaintext;
     }
 
     /**
