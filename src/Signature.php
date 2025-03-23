@@ -3,131 +3,230 @@
  * @Author: juneChen && juneswoole@163.com
  * @Date: 2023-07-21 10:13:16
  * @LastEditors: juneChen && juneswoole@163.com
- * @LastEditTime: 2023-08-24 18:13:02
- * 
+ * @LastEditTime: 2025-03-23 11:15:41
  */
 
 declare(strict_types=1);
 
 namespace June\DataSecurity;
 
-class Signature
+class Openssl
 {
     use Singleton;
 
-    /**
-     * 配置
-     *
-     * @var Config
-     */
-    protected $config;
+    protected Config $config;
+
+    /** 常用加密算法映射（统一为小写） */
+    private array $supportedCiphers = [
+        'aes-128-cbc',
+        'aes-256-cbc',
+        'aes-128-gcm',
+        'aes-256-gcm',
+        'des-ede3-cbc',
+        'bf-cbc'
+    ];
 
     public function __construct(Config $config)
     {
-        $this->config   = $config;
+        $this->config = $config;
+
+        $cipher = strtolower($this->config->getCipher());
+        if (!in_array($cipher, $this->supportedCiphers, true)) {
+            throw new \InvalidArgumentException("Unsupported cipher: {$cipher}");
+        }
     }
 
-    /**
-     * 获取签名
-     *
-     * @param array $data
-     * @return string
-     * @author juneChen <juneswoole@163.com>
-     */
-    public function sign(array $data = []): string
+    private function getKeyResource(string $type): \OpenSSLAsymmetricKey
     {
-        $signdata = $this->getSignString($data);
-        $key = base64_decode($this->config->getKey());
-        $sign = hash_hmac($this->config->getHmac(), $signdata, $key, true);
-        return base64_encode($sign);
+        $keyStr = $type === 'public'
+            ? ($this->config->getPublicKey() ?: file_get_contents($this->config->getPublicKeyFilePath()))
+            : ($this->config->getPrivateKey() ?: file_get_contents($this->config->getPrivateKeyFilePath()));
+
+        if (!str_contains($keyStr, 'BEGIN')) {
+            $header = $type === 'public' ? "-----BEGIN PUBLIC KEY-----" : "-----BEGIN RSA PRIVATE KEY-----";
+            $footer = $type === 'public' ? "-----END PUBLIC KEY-----" : "-----END RSA PRIVATE KEY-----";
+            $keyStr = $header . "\n" . wordwrap($keyStr, 64, "\n", true) . "\n" . $footer;
+        }
+
+        $key = $type === 'public' ? openssl_pkey_get_public($keyStr) : openssl_pkey_get_private($keyStr);
+
+        if (!$key) {
+            $error = openssl_error_string();
+            throw new \InvalidArgumentException(ucfirst($type) . " key unavailable: {$error}");
+        }
+        return $key;
     }
 
-    /**
-     * 验证签名
-     *
-     * @param string $sign
-     * @param array $data
-     * @return boolean
-     * @author juneChen <juneswoole@163.com>
-     */
-    public function validate(string $sign, array $data = []): bool
+    private function generateIv(): string
     {
-        $vSign = $this->sign($data);
-        return $vSign === $sign;
+        $ivLength = openssl_cipher_iv_length(strtolower($this->config->getCipher()));
+        $iv = openssl_random_pseudo_bytes($ivLength, $strong);
+        if ($iv === false || !$strong) {
+            throw new \RuntimeException("IV generation failed.");
+        }
+        return $iv;
     }
 
-    /**
-     * 获取 openssl 签名
-     *
-     * @param array $data
-     * @return string
-     * @author juneChen <juneswoole@163.com>
-     */
-    function opensslSign(array $data): string
+    public function encrypted(string $plaintext): string
     {
-        if ($this->config->getPrivateKey()) {
-            $privateKey = "-----BEGIN RSA PRIVATE KEY-----\n" .
-                wordwrap($this->config->getPrivateKey(), 64, "\n", true) .
-                "\n-----END RSA PRIVATE KEY-----";
+        $key = base64_decode($this->config->getKey(), true);
+        if ($key === false) {
+            throw new \InvalidArgumentException("Invalid base64-encoded key.");
+        }
+
+        $cipher = strtolower($this->config->getCipher());
+        $iv = str_contains($cipher, 'gcm') ? $this->generateIv() : ($this->config->getIv() ?: $this->generateIv());
+
+        $tag = '';
+        $ciphertextRaw = str_contains($cipher, 'gcm')
+            ? openssl_encrypt(
+                $plaintext,
+                $cipher,
+                $key,
+                $this->config->getOptions(),
+                $iv,
+                $tag,
+                $this->config->getAad(),
+                $this->config->getTagLength()
+            )
+            : openssl_encrypt(
+                $plaintext,
+                $cipher,
+                $key,
+                $this->config->getOptions(),
+                $iv
+            );
+
+        if ($ciphertextRaw === false) {
+            $error = openssl_error_string();
+            throw new \RuntimeException("Encryption failed: {$error}");
+        }
+
+        return base64_encode(str_contains($cipher, 'gcm') ? $iv . $tag . $ciphertextRaw : $iv . $ciphertextRaw);
+    }
+
+    public function decryption(string $ciphertext): string|false
+    {
+        if (empty($ciphertext)) return false;
+
+        $data = base64_decode($ciphertext, true);
+        if ($data === false) return false;
+
+        $cipher = strtolower($this->config->getCipher());
+        $ivLength = openssl_cipher_iv_length($cipher);
+        $key = base64_decode($this->config->getKey(), true);
+        if ($key === false) return false;
+
+        if (str_contains($cipher, 'gcm')) {
+            $tagLength = $this->config->getTagLength();
+            $iv = substr($data, 0, $ivLength);
+            $tag = substr($data, $ivLength, $tagLength);
+            $ciphertextRaw = substr($data, $ivLength + $tagLength);
+
+            $decrypted = openssl_decrypt(
+                $ciphertextRaw,
+                $cipher,
+                $key,
+                $this->config->getOptions(),
+                $iv,
+                $tag,
+                $this->config->getAad()
+            );
         } else {
-            $privateKey = file_get_contents($this->config->getPrivateKeyFilePath());
+            $iv = substr($data, 0, $ivLength);
+            $ciphertextRaw = substr($data, $ivLength);
+
+            $decrypted = openssl_decrypt(
+                $ciphertextRaw,
+                $cipher,
+                $key,
+                $this->config->getOptions(),
+                $iv
+            );
         }
-        $pri_key = openssl_pkey_get_private($privateKey);
-        if (!$pri_key) {
-            throw new \InvalidArgumentException('Private key unavailable,Check whether the private key is correctly configured');
-        }
-        $signdata = $this->getSignString($data);
-        openssl_sign($signdata, $sign, $pri_key, $this->config->getPadding());
-        $sign = base64_encode($sign);
-        return $sign;
+
+        return $decrypted !== false ? $decrypted : false;
     }
 
-    /**
-     * openssl 签名验证
-     *
-     * @param string $sign 签名串
-     * @param array $data  验证数据
-     * @return boolean
-     * @author juneChen <juneswoole@163.com>
-     */
-    function opensslVerify(string $sign, array $data = []): bool
+    public function publicEncrypt(string $plaintext): string
     {
-        if ($this->config->getPublicKey()) {
-            $publicKey = "-----BEGIN PUBLIC KEY-----\n" .
-                wordwrap($this->config->getPublicKey(), 64, "\n", true) .
-                "\n-----END PUBLIC KEY-----";
-        } else {
-            $publicKey = file_get_contents($this->config->getPublicKeyFilePath());
-        }
-        $pub_key = openssl_pkey_get_public($publicKey);
-        if (!$pub_key) {
-            throw new \InvalidArgumentException('Public key unavailable,Check whether the public key is correctly configured');
-        }
-        $signdata = $this->getSignString($data);
-        $result = (bool)openssl_verify($signdata, base64_decode($sign), $pub_key, $this->config->getPadding());
-        return $result;
+        $publicKey = $this->getKeyResource('public');
+        $encrypted = $this->opensslEncrypt($plaintext, $publicKey, 'public');
+        return base64_encode($encrypted);
     }
 
-    /**
-     * 获取签名字符串
-     *
-     * @param array $data
-     * @return string
-     * @author juneChen <juneswoole@163.com>
-     */
-    private function getSignString(array $data): string
+    public function publicDecrypt(string $ciphertext): string
     {
-        if ($this->config->getAppId()) {
-            $data['appId'] = $this->config->getAppId();
+        $ciphertext = base64_decode($ciphertext, true);
+        if ($ciphertext === false) {
+            throw new \InvalidArgumentException("Invalid base64 ciphertext.");
         }
-        ksort($data);
-        $signdata = "";
-        foreach ($data as $key => $value) {
-            if (is_array($value)) {
-                $value = json_encode($value);
+        $publicKey = $this->getKeyResource('public');
+        return $this->opensslDecrypt($ciphertext, $publicKey, 'public');
+    }
+
+    public function privateEncrypt(string $plaintext): string
+    {
+        $privateKey = $this->getKeyResource('private');
+        $encrypted = $this->opensslEncrypt($plaintext, $privateKey, 'private');
+        return base64_encode($encrypted);
+    }
+
+    public function privateDecrypt(string $ciphertext): string
+    {
+        $ciphertext = base64_decode($ciphertext, true);
+        if ($ciphertext === false) {
+            throw new \InvalidArgumentException("Invalid base64 ciphertext.");
+        }
+        $privateKey = $this->getKeyResource('private');
+        return $this->opensslDecrypt($ciphertext, $privateKey, 'private');
+    }
+
+    private function opensslEncrypt(string $text, \OpenSSLAsymmetricKey $key, string $type): string
+    {
+        $details = openssl_pkey_get_details($key);
+        $maxLength = ($details['bits'] / 8) - 11;
+        $output = '';
+
+        while ($text !== '') {
+            $input = substr($text, 0, (int)$maxLength);
+            $text = substr($text, (int)$maxLength);
+            $crypttext = '';
+            $success = $type === 'public'
+                ? openssl_public_encrypt($input, $crypttext, $key)
+                : openssl_private_encrypt($input, $crypttext, $key);
+
+            if (!$success) {
+                $error = openssl_error_string();
+                throw new \RuntimeException("Asymmetric encryption failed: {$error}");
             }
-            $signdata .= $key . $value;
+            $output .= $crypttext;
         }
-        return $signdata;
+
+        return $output;
+    }
+
+    private function opensslDecrypt(string $text, \OpenSSLAsymmetricKey $key, string $type): string
+    {
+        $details = openssl_pkey_get_details($key);
+        $maxLength = $details['bits'] / 8;
+        $output = '';
+
+        while ($text !== '') {
+            $input = substr($text, 0, (int)$maxLength);
+            $text = substr($text, (int)$maxLength);
+            $crypttext = '';
+            $success = $type === 'public'
+                ? openssl_public_decrypt($input, $crypttext, $key)
+                : openssl_private_decrypt($input, $crypttext, $key);
+
+            if (!$success) {
+                $error = openssl_error_string();
+                throw new \RuntimeException("Asymmetric decryption failed: {$error}");
+            }
+            $output .= $crypttext;
+        }
+
+        return $output;
     }
 }
